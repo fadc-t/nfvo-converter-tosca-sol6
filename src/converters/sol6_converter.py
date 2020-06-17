@@ -1,6 +1,3 @@
-"""
-
-"""
 import re
 from keys.sol6_keys import *
 from utils.dict_utils import *
