@@ -25,7 +25,7 @@ class SOL6ConverterCisco(Sol6Converter):
 
         # The very first thing we want to do is set up the path variables
         log.debug("Setting path variables: {}".format(self.variables))
-        formatted_vars = PathMaping.format_paths(self.variables)
+        formatted_vars = PathMapping.format_paths(self.variables)
 
         TOSCA.set_variables(self.variables["tosca"], TOSCA, variables=formatted_vars,
                             dict_tosca=self.tosca_vnf, cur_provider=provider)

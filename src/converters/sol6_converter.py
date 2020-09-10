@@ -329,8 +329,8 @@ class Sol6Converter:
             return value
         return value[0]
 
-    @staticmethod
-    def _format_as_valid(option, path, value, valid_formats, none_found=False, prefix="", fuzzy=False):
+    @classmethod
+    def _format_as_valid(cls, option, path, value, valid_formats, none_found=False, prefix="", fuzzy=False):
         """
         Take the value, and a list of valid options, see if the value is any of the valid ones.
         Return the output as a list (for some reason)
@@ -345,7 +345,7 @@ class Sol6Converter:
             # If it is, make sure it isn't a reference to the tosca_vnf
             value = list(value)
         for i, item in enumerate(value):
-            found, value[i] = Sol6Converter._fmt_val(item, valid_formats, none_found, fuzzy=fuzzy)
+            found, value[i] = cls._fmt_val(item, valid_formats, none_found, fuzzy=fuzzy)
             if not found:
                 log.error("Value '{}' not found in valid formats: {}".format(item, valid_formats))
             if value[i]:

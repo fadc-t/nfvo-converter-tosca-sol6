@@ -77,7 +77,7 @@ class ToscaVnfd:
             "topology_template": {
                 "node_templates": {
                     "vnf": {
-                        "type": "cisco.1VDU.1_0.1_0",
+                        "type": None,
 
                         "properties": {
                             # Cisco extension + default tosca
@@ -102,6 +102,37 @@ class ToscaVnfd:
                         "interfaces": {
                             "Vnflcm": {}
                         }
+                    },
+                    # Number will be filled in later
+                    "vdu_": {
+                        "type": "cisco.nodes.nfv.Vdu.Compute",
+                        "properties": {
+                            "name": None,
+                            "description": None,
+                            "boot_order": {},
+                            "configurable_properties": {
+                                "additional_vnfc_configurable_properties": {},
+                            },
+                            "vdu_profile": {
+                                "max_number_of_instances": None,
+                                "min_number_of_instances": None
+                            }
+                        },
+                        "capabilities": {
+                            "virtual_compute": {
+                                "properties": {
+                                    "virtual_cpu": {
+                                        "num_virtual_cpu": None
+                                    },
+                                    "virtual_memory": {
+                                        "virtual_mem_size": None
+                                    }
+                                }
+                            }
+                        },
+                        "requirements": [
+                            {"virtual_storage": None}
+                        ]
                     }
                 }
             }

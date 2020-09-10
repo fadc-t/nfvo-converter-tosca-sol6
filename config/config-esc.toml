@@ -48,6 +48,7 @@ providers=["cisco", "mavenir"]
     # ** VNF Metadata **
     vnf                     = ["node_templates", "vnf"]
     vnf_prop                = ["vnf", "properties"]
+    vnf_type                = ["vnf", "type"]
     vnf_desc_id             = ["vnf_prop", "descriptor_id"]
     vnf_desc_ver            = ["vnf_prop", "descriptor_version"]
     vnf_provider            = ["vnf_prop", "provider"]
