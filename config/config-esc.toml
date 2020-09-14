@@ -75,6 +75,7 @@ providers=["cisco", "mavenir"]
 
     # ** VDU **
     vdu                     = ["node_templates", "{}"]
+    vdu_type                = ["vdu", "{}"]
     vdu_props               = ["vdu", "properties"]
     vdu_name                = ["vdu_props", "name"]
     vdu_boot                = ["vdu_props", "boot_order"]

@@ -137,3 +137,5 @@ class ToscaVnfd:
                 }
             }
         }
+        # That's just for reference, don't actually use it
+        self.vnfd = {}

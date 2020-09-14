@@ -49,33 +49,33 @@ class Sol1Converter:
 
         # -- VDU --
         vdus = get_path_value(sv("vdus"), self.sol6_vnfd)
-        print(vdus)
-        # We need to duplicate the structure of the tosca vnfd vdu nodes for each entry greater than 1
-        # if len(vdus) > 1:
 
         vdu_ids = [vdu["id"] for vdu in vdus]
         vdu_map = self.v2_map.generate_map_from_list(vdu_ids)
-        print(vdu_map)
 
-        # for cur_vdu_map in vdu_map:
+        self.set_type(tv("vdu_type"), "cisco.nodes.nfv.Vdu.Compute", vdu_map)
+        add_map(((tv("vdu_name"), V2MapBase.FLAG_BLANK),                    [sv("vdu_name"), vdu_map]))
+        add_map(((tv("vdu_desc"), V2MapBase.FLAG_BLANK),                    [sv("vdu_desc"), vdu_map]))
+        # TODO: We need to turn this weird key/value pair list back into a normal list
+        # add_map(((tv("vdu_boot"), V2MapBase.FLAG_BLANK),                    [sv("vdu_boot_order_list"), vdu_map]))
+        vdu_boot_order_map = []
+        for vdu in vdu_map:
+            boot_order = self.merge_kvp(MapElem.format_path(vdu, sv("vdu_boot_order_list")), "key")
+            vdu_boot_order_map.append(self.v2_map.generate_map_from_list([key for key, value in boot_order.items()]))
+        print(vdu_boot_order_map)
 
-        # add_map(((tv("vdu"), V2MapBase.FLAG_BLANK),                 [sv("vdu_id"), vdu_map]))
-        # add_map(((tv("vdu_name"), self.FLAG_BLANK),                    [sv("vdu_name"), vdu_map]))
-        # add_map(((tv("vdu_desc"), self.FLAG_BLANK),                    [sv("vdu_desc"), vdu_map]))
+        # Save to variable for space reasons
+        vdu_profiles = self.merge_kvp(sv("df_vdu_profile_list"), "id")
+        # Generate mapping from variable
+        vdu_profile_map = self.v2_map.generate_map_from_list([key for key, value in vdu_profiles.items()])
+        # Finally, add the mapping itself
+        add_map(((tv("vdu_prof_inst_min"), V2MapBase.FLAG_BLANK),           [sv("df_vdu_prof_inst_min"), vdu_profile_map]))
+        add_map(((tv("vdu_prof_inst_max"), V2MapBase.FLAG_BLANK),           [sv("df_vdu_prof_inst_max"), vdu_profile_map]))
+
+
+        # -- End VDU --
 
         self.run_mapping()
-        # for (tosca_loc_put, flags), tosca_loc_get in self.mapping:
-        #     if type(tosca_loc_get) is not list:
-        #         set_path_to(tosca_loc_put, vnfd,
-        #                     get_path_value(tosca_loc_get, self.sol6_vnfd), create_missing=True)
-        #     else:  # We have a mapping to deal with
-        #         [sol6_loc_get, mapping] = tosca_loc_get
-        #         for cur_map in mapping:
-        #             tosca_fmt = MapElem.format_path(cur_map, tosca_loc_put, use_value=False)
-        #             sol6_fmt = MapElem.format_path(cur_map, sol6_loc_get, use_value=True)
-        #             set_path_to(tosca_fmt, vnfd,
-        #                         get_path_value(sol6_fmt, self.sol6_vnfd), create_missing=True)
-
         return vnfd
 
     # *************************
@@ -168,8 +168,62 @@ class Sol1Converter:
 
         set_path_to(sol1_path, self.sol1_vnfd, value, create_missing=True)
 
+    def merge_kvp(self, sol6_path, key):
+        """
+        Merge list of dicts, then reorder dicts to subdicts based on the key `key`
+
+        Helper function for getting values with yang-based keys
+        ex: "vdu-profile": [{"id": "vdu_node_1", "min-number-of-instances": 1}]
+        into "vdu-profile": {"vdu_node_1": {"min-number-of-instances": 1}}
+
+        :return: A merged dict
+        """
+        # Get the values
+        data = get_path_value(sol6_path, self.sol6_vnfd, must_exist=False)
+        result = {}
+
+        if not data:
+            return result
+
+        for data_dict in data:
+            # Make sure key exists, skip if it doesn't
+            if key not in data_dict:
+                continue
+            # Get what is going to become out dict key
+            key_val = str(data_dict[key])
+
+            # There might be a case where there are duplicate entries here
+            # It *shouldn't* happen, but it's possible and it could give strange results
+            if key_val in result:
+                log.warning("merge_kvp: key_val '{}' already exists in result with contents: '{}'".format(key_val, result[key_val]))
+
+            del data_dict[key]
+            # Now move the contents (minus the key: key_val pair) into the new
+            # dict
+            result[key_val] = data_dict
+
+        return result
+
     def add_map(self, cur_map):
         self.mapping.append(cur_map)
+
+    def set_type(self, path, type_val, parent_map):
+        """
+        Sets the type value for a given path to `type_val`
+        This is a helper function because the mapping algorithm I have is frustrating to
+        set static values with changing parents.
+
+        Example use:
+            vdu_node_1:
+                type: `type_val`
+            vdu_node_2:
+                type:  `type_val`
+        """
+        type_map = [MapElem("type", None) for _ in range(len(parent_map))]
+        for i, val in enumerate(parent_map):
+            type_map[i].parent_map = parent_map[i]
+
+        self.add_map(((path, V2MapBase.FLAG_KEY_SET_VALUE), [type_val, type_map]))
 
     def get_tosca_value(self, value):
         return V2MapBase.get_value(value, self.va_t, "tosca")
