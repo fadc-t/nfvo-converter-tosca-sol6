@@ -154,7 +154,7 @@ class SolCon:
             self.cnfv = dict_utils.remove_empty_from_dict(self.cnfv)
 
         # Output with yaml.dump if our output file is yaml
-        if self.args.output.split(".")[-1].lower() == "yaml":
+        if self.args.output and self.args.output.split(".")[-1].lower() == "yaml":
             output_lines = yaml.dump(self.cnfv, default_flow_style=False)
         else:
             # Put the data:esti-nfv:vnf tags at the base
