@@ -2,6 +2,7 @@ import re
 from keys.sol6_keys import *
 from utils.dict_utils import *
 from utils.key_utils import KeyUtils
+from utils.list_utils import flatten
 from converters.etsi_nfv_vnfd import EtsiNfvVnfd, ToscaVnfd
 from converters.sol1_flags import *
 from keys.sol6_keys import V2MapBase
@@ -56,12 +57,15 @@ class Sol1Converter:
         self.set_type(tv("vdu_type"), "cisco.nodes.nfv.Vdu.Compute", vdu_map)
         add_map(((tv("vdu_name"), V2MapBase.FLAG_BLANK),                    [sv("vdu_name"), vdu_map]))
         add_map(((tv("vdu_desc"), V2MapBase.FLAG_BLANK),                    [sv("vdu_desc"), vdu_map]))
-        # TODO: We need to turn this weird key/value pair list back into a normal list
-        # add_map(((tv("vdu_boot"), V2MapBase.FLAG_BLANK),                    [sv("vdu_boot_order_list"), vdu_map]))
+
         vdu_boot_order_map = []
         for vdu in vdu_map:
             boot_order = self.merge_kvp(MapElem.format_path(vdu, sv("vdu_boot_order_list")), "key")
-            vdu_boot_order_map.append(self.v2_map.generate_map_from_list([key for key, value in boot_order.items()]))
+            if len(boot_order) > 0:
+                vdu_boot_order_map.append(self.v2_map.generate_map_from_list([value["value"] for key, value in boot_order.items()]))
+        # This is now a list of multiple lists, so flatten that all into a single list
+        vdu_boot_order_map = flatten(vdu_boot_order_map)
+        add_map(((tv("vdu_boot"), V2MapBase.FLAG_BLANK),                    [sv("vdu_boot_order_list"), vdu_map]))
         print(vdu_boot_order_map)
 
         # Save to variable for space reasons
@@ -124,8 +128,11 @@ class Sol1Converter:
         """
         mapping_list = map_sol6[1]  # List of MapElems
         sol6_path = map_sol6[0]
+        i = -1
 
         for elem in mapping_list:
+            i = i + 1
+
             # Skip this mapping element if it is None, but allow a none name to pass
             if not elem:
                 continue
@@ -142,7 +149,7 @@ class Sol1Converter:
                       .format(f_tosca_path, f_sol6_path))
 
             # Handle flags for mapped values
-            value = self.sol1_flags.handle_flags(f_sol6_path, f_tosca_path)
+            value = self.sol1_flags.handle_flags(f_sol6_path, f_tosca_path, i)
 
             # If the value doesn't exist, don't write it
             # Do write it if the value is 0, though
@@ -164,7 +171,7 @@ class Sol1Converter:
             return
 
         # Handle the various flags for no mappings
-        value = self.sol1_flags.handle_flags(sol6_path, sol1_path)
+        value = self.sol1_flags.handle_flags(sol6_path, sol1_path, 0)
 
         set_path_to(sol1_path, self.sol1_vnfd, value, create_missing=True)
 

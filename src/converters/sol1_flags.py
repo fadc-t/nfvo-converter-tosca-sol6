@@ -16,6 +16,7 @@ class Sol1Flags:
         self.only_number_float  = False
         self.append_list        = False
         self.first_list_elem    = False
+        self.nth_list_elem      = False
         self.tosca_use_value    = False
         self.format_as_ip       = False
         self.format_as_disk     = False
@@ -33,7 +34,7 @@ class Sol1Flags:
     # ******************
     # ** Flag methods **
     # ******************
-    def handle_flags(self, f_sol6_path, f_sol1_path):
+    def handle_flags(self, f_sol6_path, f_sol1_path, run):
         """
         Returns the value after being formatted by the flags
         """
@@ -60,6 +61,7 @@ class Sol1Flags:
         #                               self.variables["sol6"]["VALID_STORAGE_TYPES_VAL"],
         #                               none_found=self.format_invalid_none, fuzzy=True)
         value = self._first_list_elem(self.first_list_elem, value)
+        value = self._nth_list_elem(self.nth_list_elem, value, run)
         value = self._check_for_null(value)
 
         return value
@@ -75,6 +77,7 @@ class Sol1Flags:
         self.only_number_float  = False
         self.append_list        = False
         self.first_list_elem    = False
+        self.nth_list_elem      = False
         self.tosca_use_value    = False
         self.format_as_ip       = False
         self.format_as_container = False
@@ -172,6 +175,15 @@ class Sol1Flags:
         if not option or not isinstance(value, list):
             return value
         return value[0]
+
+    @staticmethod
+    def _nth_list_elem(option, value, n):
+        if not option or not isinstance(value, list):
+            return value
+        if len(value) > n:
+            return value[n]
+        else:
+            return value[-1]
 
     @classmethod
     def _format_as_valid(cls, option, path, value, valid_formats, none_found=False, prefix="", fuzzy=False):
