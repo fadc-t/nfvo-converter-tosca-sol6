@@ -98,6 +98,7 @@ class V2MapBase(V2Mapping):
     FLAG_APPEND_LIST                = "APPENDLIST"
     # Get the first element in the output list
     FLAG_LIST_FIRST                 = "GETFIRSTLISTELEM"
+    FLAG_LIST_NTH                   = "GETNTHLISTELEM"
     # Require delta validation
     FLAG_REQ_DELTA                  = "YAMLSUCKS"
     # Try to format the value as a valid input for layer-protocol
