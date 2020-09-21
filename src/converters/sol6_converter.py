@@ -303,10 +303,18 @@ class Sol6Converter:
         if not option:
             return value
         cur_list = get_path_value(path, self.vnfd, must_exist=False, no_msg=self.fail_silent)
-        if cur_list:
-            if not isinstance(cur_list, list):
-                raise TypeError("{} is not a list".format(cur_list))
-            return list(cur_list).append(value)
+        # If it doesn't exist, create it
+        if not cur_list:
+            cur_list = []
+
+        # This means a value exists in the path, so convert it to a list
+        if not isinstance(cur_list, list):
+            # Convert it to a list, then continue
+            cur_list = [cur_list]
+
+        # Now that everything is together in a list, append the value
+        cur_list.append(value)
+        return cur_list
 
     def _key_as_value(self, option, path):
         if option:

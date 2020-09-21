@@ -58,15 +58,20 @@ class Sol1Converter:
         add_map(((tv("vdu_name"), V2MapBase.FLAG_BLANK),                    [sv("vdu_name"), vdu_map]))
         add_map(((tv("vdu_desc"), V2MapBase.FLAG_BLANK),                    [sv("vdu_desc"), vdu_map]))
 
+        # Get boot order information from the kvp and put it into a useful map
         vdu_boot_order_map = []
         for vdu in vdu_map:
             boot_order = self.merge_kvp(MapElem.format_path(vdu, sv("vdu_boot_order_list")), "key")
             if len(boot_order) > 0:
-                vdu_boot_order_map.append(self.v2_map.generate_map_from_list([value["value"] for key, value in boot_order.items()]))
+                vdu_boot_order_map.append(self.v2_map.generate_map_from_list([value["value"]
+                                                                              for key, value in boot_order.items()],
+                                                                             map_args={"none_key": True}))
+                for b in vdu_boot_order_map[-1]:
+                    b.parent_map = vdu.copy()
+
         # This is now a list of multiple lists, so flatten that all into a single list
         vdu_boot_order_map = flatten(vdu_boot_order_map)
-        add_map(((tv("vdu_boot"), V2MapBase.FLAG_BLANK),                    [sv("vdu_boot_order_list"), vdu_map]))
-        print(vdu_boot_order_map)
+        add_map(((tv("vdu_boot"), (V2MapBase.FLAG_APPEND_LIST, V2MapBase.FLAG_FAIL_SILENT)),                    [sv("vdu_boot_value"), vdu_boot_order_map]))
 
         # Save to variable for space reasons
         vdu_profiles = self.merge_kvp(sv("df_vdu_profile_list"), "id")
@@ -186,7 +191,7 @@ class Sol1Converter:
         :return: A merged dict
         """
         # Get the values
-        data = get_path_value(sol6_path, self.sol6_vnfd, must_exist=False)
+        data = get_path_value(sol6_path, self.sol6_vnfd, must_exist=False, )
         result = {}
 
         if not data:
