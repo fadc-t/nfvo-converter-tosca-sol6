@@ -27,6 +27,12 @@ class Sol1Converter:
         self.v2_map = V2Mapping(self.sol1_vnfd, self.sol6_vnfd)
         self.sol1_flags = Sol1Flags(self.sol1_vnfd, self.sol6_vnfd)
 
+        # TODO: Add type inheritance for new types
+        self.type_prefix = get_path_value(self.get_sol6_value("vnfd_id"), self.sol6_vnfd, must_exist=True)
+        self.type_vnf = "{}_VNF".format(self.type_prefix)
+        self.type_vdu = "{}_VDU_Compute".format(self.type_prefix)
+        self.type_cp = "{}_VDU_CP".format(self.type_prefix)
+
     def convert(self):
         tv = self.get_tosca_value
         sv = self.get_sol6_value
@@ -35,7 +41,7 @@ class Sol1Converter:
         vnfd = self.sol1_vnfd
 
         # -- Metadata --
-        set_path_to(tv("vnf_type"), self.sol1_vnfd, "cisco.1VDU.1_0.1_0", create_missing=True)
+        set_path_to(tv("vnf_type"), self.sol1_vnfd, self.type_vnf, create_missing=True)
         add_map(((tv("vnf_provider"), V2MapBase.FLAG_BLANK),                sv("vnfd_provider")))
         add_map(((tv("vnf_product_name"), V2MapBase.FLAG_BLANK),            sv("vnfd_product")))
         add_map(((tv("vnf_software_ver"), V2MapBase.FLAG_BLANK),            sv("vnfd_software_ver")))
@@ -47,6 +53,8 @@ class Sol1Converter:
         add_map(((tv("vnf_conf_autoscale"), V2MapBase.FLAG_BLANK),          sv("vnfd_config_autoscale")))
 
         # -- End Metadata --
+        set_path_to(tv("substitution_type"), self.sol1_vnfd, self.type_vnf, create_missing=True)
+        set_path_to(tv("substitution_virt_link"), self.sol1_vnfd, " ", create_missing=True)
 
         # -- VDU --
         vdus = get_path_value(sv("vdus"), self.sol6_vnfd)
@@ -54,7 +62,7 @@ class Sol1Converter:
         vdu_ids = [vdu["id"] for vdu in vdus]
         vdu_map = self.v2_map.generate_map_from_list(vdu_ids)
 
-        self.set_type(tv("vdu_type"), "cisco.nodes.nfv.Vdu.Compute", vdu_map)
+        self.set_type(tv("vdu_type"), self.type_vdu, vdu_map)
         add_map(((tv("vdu_name"), V2MapBase.FLAG_BLANK),                    [sv("vdu_name"), vdu_map]))
         add_map(((tv("vdu_desc"), V2MapBase.FLAG_BLANK),                    [sv("vdu_desc"), vdu_map]))
 
@@ -81,7 +89,27 @@ class Sol1Converter:
         add_map(((tv("vdu_prof_inst_min"), V2MapBase.FLAG_BLANK),           [sv("df_vdu_prof_inst_min"), vdu_profile_map]))
         add_map(((tv("vdu_prof_inst_max"), V2MapBase.FLAG_BLANK),           [sv("df_vdu_prof_inst_max"), vdu_profile_map]))
 
+        # -- Connection Points --
+        int_cpd_map = []
+        vdu_cpd_map = []
 
+        for vdu in vdu_map:
+            int_cpds = get_path_value(MapElem.format_path(vdu, sv("int_cpd_list")), self.sol6_vnfd)
+
+            for i, icpd in enumerate(int_cpds):
+                int_cpd_map.append(MapElem(icpd["id"], i, parent_map=vdu))
+                vdu_cpd_map.append(MapElem(icpd["id"], None, parent_map=vdu))
+
+                # Set the requirements value to be a list, which we will keep as a list,
+                # since it's required to be a list for TOSCA
+                set_path_to(MapElem.format_path(int_cpd_map[-1], tv("int_cpd_req"), use_value=False), self.sol1_vnfd,
+                            [], create_missing=True)
+            # ext_cpds = get_path_value(sv("ext_cpd"), self.sol6_vnfd)
+
+        self.set_type(tv("int_cpd_type"), self.type_cp, int_cpd_map)
+        add_map(((tv("int_cpd_layer_prot"), V2MapBase.FLAG_BLANK),                    [sv("int_cpd_layer_prot"), int_cpd_map]))
+
+        add_map(((tv("int_cpd_virt_binding"), V2MapBase.FLAG_BLANK), [sv("vdu_id"), vdu_cpd_map]))
         # -- End VDU --
 
         self.run_mapping()
@@ -116,8 +144,8 @@ class Sol1Converter:
             log.debug("SOL1 path is None, skipping with no error message")
             return
 
-        log.debug("Run mapping for sol6: {} --> tosca: {}"
-                  .format(map_sol6 if not isinstance(map_sol6, list) else map_sol6[0], sol1_path))
+        log.debug("Run mapping for sol1: {} --> sol6: {}"
+                  .format(sol1_path, map_sol6 if not isinstance(map_sol6, list) else map_sol6[0]))
 
         # Check if there is a mapping needed
         if isinstance(map_sol6, list):
@@ -150,8 +178,8 @@ class Sol1Converter:
             f_tosca_path = MapElem.format_path(elem, tosca_path, use_value=tosca_use_value)
             f_sol6_path = MapElem.format_path(elem, sol6_path, use_value=True)
 
-            log.debug("Formatted paths:\n\ttosca: {} --> sol6: {}"
-                      .format(f_tosca_path, f_sol6_path))
+            log.debug("Formatted paths:\n\tsol6: {} --> sol1: {}"
+                      .format(f_sol6_path, f_tosca_path))
 
             # Handle flags for mapped values
             value = self.sol1_flags.handle_flags(f_sol6_path, f_tosca_path, i)
@@ -229,7 +257,7 @@ class Sol1Converter:
             vdu_node_1:
                 type: `type_val`
             vdu_node_2:
-                type:  `type_val`
+                type: `type_val`
         """
         type_map = [MapElem("type", None) for _ in range(len(parent_map))]
         for i, val in enumerate(parent_map):
